@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #leftPane, #rightPane {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        #leftPane {
+            width: 40%;
+            border-right: 1px solid #ccc;
+            background: #f7f7f7;
+        }
+        #rightPane {
+            width: 60%;
+        }
+        .question-box {
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .question-box:hover {
+            background: #e6f7ff;
+        }
+        .response {
+            background: #f1f1f1;
+            margin-top: 5px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .btn {
+            padding: 6px 12px;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Left Pane: Questions List -->
+    <div id="leftPane">
+        <h3>Questions</h3>
+        <div id="questionsList"></div>
+    </div>
+
+    <!-- Right Pane: Default Form -->
+    <div id="rightPane">
+        <h3>Ask a Question</h3>
+        <form id="questionForm">
+            <label>Title:</label><br>
+            <input type="text" id="qTitle" required><br><br>
+            <label>Question:</label><br>
+            <textarea id="qBody" required></textarea><br><br>
+            <button type="submit" class="btn">Submit Question</button>
+        </form>
+    </div>
+
+<script>
+    const questionsList = document.getElementById('questionsList');
+    const rightPane = document.getElementById('rightPane');
+
+    let questions = [];
+
+    // User Story 2: Add question
+    document.getElementById('questionForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        const title = document.getElementById('qTitle').value.trim();
+        const body = document.getElementById('qBody').value.trim();
+
+        if(!title || !body) return;
+
+        const question = {
+            id: Date.now(),
+            title,
+            body,
+            responses: []
+        };
+
+        questions.push(question);
+        displayQuestions();
+        this.reset();
+    });
+
+    function displayQuestions(){
+        questionsList.innerHTML = '';
+        questions.forEach(q => {
+            const box = document.createElement('div');
+            box.className = 'question-box';
+            box.innerHTML = `<strong>${q.title}</strong>`;
+            box.addEventListener('click', () => openQuestion(q.id));
+            questionsList.appendChild(box);
+        });
+    }
+
+    // User Story 3: Open a question view
+    function openQuestion(id){
+        const q = questions.find(item => item.id === id);
+        rightPane.innerHTML = `
+            <h3>${q.title}</h3>
+            <p>${q.body}</p>
+            <button class="btn" onclick="resolveQuestion(${q.id})">Resolve</button>
+            <h4>Responses:</h4>
+            <div id="responsesList">
+                ${q.responses.map(r => `<div class="response"><strong>${r.name}</strong>: ${r.comment}</div>`).join('')}
+            </div>
+            <h4>Add Response</h4>
+            <form id="responseForm">
+                <label>Name:</label><br>
+                <input type="text" id="rName" required><br><br>
+                <label>Comment:</label><br>
+                <textarea id="rComment" required></textarea><br><br>
+                <button type="submit" class="btn">Submit Response</button>
+            </form>
+        `;
+
+        // User Story 4: Append response
+        document.getElementById('responseForm').addEventListener('submit', function(e){
+            e.preventDefault();
+            const name = document.getElementById('rName').value.trim();
+            const comment = document.getElementById('rComment').value.trim();
+            if(!name || !comment) return;
+            q.responses.push({name, comment});
+            openQuestion(id);
+        });
+    }
+
+    // User Story 3 - Resolve button
+    function resolveQuestion(id){
+        questions = questions.filter(q => q.id !== id);
+        displayQuestions();
+        resetToQuestionForm();
+    }
+
+    // Reset right pane to default form
+    function resetToQuestionForm(){
+        rightPane.innerHTML = `
+            <h3>Ask a Question</h3>
+            <form id="questionForm">
+                <label>Title:</label><br>
+                <input type="text" id="qTitle" required><br><br>
+                <label>Question:</label><br>
+                <textarea id="qBody" required></textarea><br><br>
+                <button type="submit" class="btn">Submit Question</button>
+            </form>
+        `;
+        document.getElementById('questionForm').addEventListener('submit', function(e){
+            e.preventDefault();
+            const title = document.getElementById('qTitle').value.trim();
+            const body = document.getElementById('qBody').value.trim();
+            if(!title || !body) return;
+            const question = {
+                id: Date.now(),
+                title,
+                body,
+                responses: []
+            };
+            questions.push(question);
+            displayQuestions();
+            this.reset();
+        });
+    }
+</script>
+</body>
+</html>
