@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discussion App</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        height: 100vh;
+    }
+    #leftPane, #rightPane {
+        padding: 20px;
+        overflow-y: auto;
+    }
+    #leftPane {
+        width: 35%;
+        border-right: 1px solid #ccc;
+        background: #f9f9f9;
+    }
+    #rightPane {
+        width: 65%;
+    }
+    .question-box {
+        background: #fff;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .question-box:hover {
+        background: #e6f7ff;
+    }
+    .btn {
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-top: 5px;
+    }
+    .vote-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        margin: 0 3px;
+    }
+    .response {
+        background: #f1f1f1;
+        margin-top: 5px;
+        padding: 5px;
+        border-radius: 4px;
+    }
+    .response-votes {
+        font-size: 12px;
+        margin-left: 5px;
+    }
+</style>
+</head>
+<body>
+
+<!-- Left Pane -->
+<div id="leftPane">
+    <h3>Questions</h3>
+    <button class="btn" onclick="resetToQuestionForm()">New Question</button>
+    <br><br>
+    <input type="text" id="searchBox" placeholder="Search questions..." oninput="filterQuestions()">
+    <br><br>
+    <div id="questionsList"></div>
+</div>
+
+<!-- Right Pane -->
+<div id="rightPane">
+    <h3>Ask a Question</h3>
+    <form id="questionForm">
+        <label>Title:</label><br>
+        <input type="text" id="qTitle" required><br><br>
+        <label>Question:</label><br>
+        <textarea id="qBody" required></textarea><br><br>
+        <button type="submit" class="btn">Submit Question</button>
+    </form>
+</div>
+
+<script>
+let questions = [];
+
+document.getElementById('questionForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const title = document.getElementById('qTitle').value.trim();
+    const body = document.getElementById('qBody').value.trim();
+    if(!title || !body) return;
+    questions.push({
+        id: Date.now(),
+        title,
+        body,
+        votes: 0,
+        responses: []
+    });
+    this.reset();
+    displayQuestions();
+});
+
+function displayQuestions(){
+    const list = document.getElementById('questionsList');
+    list.innerHTML = '';
+    questions.sort((a,b) => b.votes - a.votes); // Sort by votes
+    questions.forEach(q => {
+        const box = document.createElement('div');
+        box.className = 'question-box';
+        box.innerHTML = `
+            <span><strong>${q.title}</strong> (${q.votes})</span>
+            <span>
+                <button class="vote-btn" onclick="event.stopPropagation(); upvoteQuestion(${q.id})">👍</button>
+                <button class="vote-btn" onclick="event.stopPropagation(); downvoteQuestion(${q.id})">👎</button>
+            </span>
+        `;
+        box.addEventListener('click', () => openQuestion(q.id));
+        list.appendChild(box);
+    });
+}
+
+function openQuestion(id){
+    const q = questions.find(item => item.id === id);
+    const rp = document.getElementById('rightPane');
+    rp.innerHTML = `
+        <h3>${q.title}</h3>
+        <p>${q.body}</p>
+        <p><strong>Votes:</strong> ${q.votes}
+            <button class="vote-btn" onclick="upvoteQuestion(${q.id}); openQuestion(${q.id})">👍</button>
+            <button class="vote-btn" onclick="downvoteQuestion(${q.id}); openQuestion(${q.id})">👎</button>
+        </p>
+        <button class="btn" onclick="resolveQuestion(${q.id})">Resolve</button>
+        <h4>Previous Answers</h4>
+        <div id="responsesList">
+            ${q.responses
+                .sort((a,b) => b.votes - a.votes)
+                .map(r => `
+                    <div class="response">
+                        <strong>${r.name}</strong>: ${r.comment}
+                        <span class="response-votes">(${r.votes})</span>
+                        <button class="vote-btn" onclick="upvoteResponse(${q.id}, ${r.id}); openQuestion(${q.id})">👍</button>
+                        <button class="vote-btn" onclick="downvoteResponse(${q.id}, ${r.id}); openQuestion(${q.id})">👎</button>
+                    </div>
+                `).join('')}
+        </div>
+        <h4>Add Response</h4>
+        <form id="responseForm">
+            <label>Name:</label><br>
+            <input type="text" id="rName" required><br><br>
+            <label>Comment:</label><br>
+            <textarea id="rComment" required></textarea><br><br>
+            <button type="submit" class="btn">Submit Response</button>
+        </form>
+    `;
+
+    document.getElementById('responseForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        const name = document.getElementById('rName').value.trim();
+        const comment = document.getElementById('rComment').value.trim();
+        if(!name || !comment) return;
+        q.responses.push({id: Date.now(), name, comment, votes: 0});
+        openQuestion(id);
+    });
+}
+
+function resetToQuestionForm(){
+    const rp = document.getElementById('rightPane');
+    rp.innerHTML = `
+        <h3>Ask a Question</h3>
+        <form id="questionForm">
+            <label>Title:</label><br>
+            <input type="text" id="qTitle" required><br><br>
+            <label>Question:</label><br>
+            <textarea id="qBody" required></textarea><br><br>
+            <button type="submit" class="btn">Submit Question</button>
+        </form>
+    `;
+    document.getElementById('questionForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        const title = document.getElementById('qTitle').value.trim();
+        const body = document.getElementById('qBody').value.trim();
+        if(!title || !body) return;
+        questions.push({
+            id: Date.now(),
+            title,
+            body,
+            votes: 0,
+            responses: []
+        });
+        this.reset();
+        displayQuestions();
+    });
+}
+
+function resolveQuestion(id){
+    questions = questions.filter(q => q.id !== id);
+    displayQuestions();
+    resetToQuestionForm();
+}
+
+function upvoteQuestion(id){
+    const q = questions.find(q => q.id === id);
+    q.votes++;
+    displayQuestions();
+}
+function downvoteQuestion(id){
+    const q = questions.find(q => q.id === id);
+    q.votes--;
+    displayQuestions();
+}
+function upvoteResponse(qid, rid){
+    const q = questions.find(q => q.id === qid);
+    const r = q.responses.find(r => r.id === rid);
+    r.votes++;
+}
+function downvoteResponse(qid, rid){
+    const q = questions.find(q => q.id === qid);
+    const r = q.responses.find(r => r.id === rid);
+    r.votes--;
+}
+
+function filterQuestions(){
+    const term = document.getElementById('searchBox').value.toLowerCase();
+    const list = document.getElementById('questionsList');
+    list.innerHTML = '';
+    let filtered = questions.filter(q => q.title.toLowerCase().includes(term));
+    if(term === '') filtered = questions;
+    filtered.sort((a,b) => b.votes - a.votes);
+    if(filtered.length === 0){
+        list.innerHTML = '<p>No questions found</p>';
+    } else {
+        filtered.forEach(q => {
+            const box = document.createElement('div');
+            box.className = 'question-box';
+            box.innerHTML = `
+                <span><strong>${q.title}</strong> (${q.votes})</span>
+                <span>
+                    <button class="vote-btn" onclick="event.stopPropagation(); upvoteQuestion(${q.id})">👍</button>
+                    <button class="vote-btn" onclick="event.stopPropagation(); downvoteQuestion(${q.id})">👎</button>
+                </span>
+            `;
+            box.addEventListener('click', () => openQuestion(q.id));
+            list.appendChild(box);
+        });
+    }
+}
+</script>
+</body>
+</html>
